@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-
-
 import flask
 import requests
+from flask import json
 
 app = flask.Flask(__name__)
 
@@ -16,17 +15,26 @@ method_requests_mapping = {
     'OPTIONS': requests.options,
 }
 
-
 @app.route('/<path:url>', methods=method_requests_mapping.keys())
 def proxy(url):
+
     requests_function = method_requests_mapping[flask.request.method]
-    request = requests_function(url, stream=True, params=flask.request.args)
-    response = flask.Response(flask.stream_with_context(request.iter_content(chunk_size=1024)),
-                              content_type=request.headers['content-type'],
-                              status=request.status_code)
+    response = requests.get(url)
+    data = {
+        'contents' : response.text,
+        'status' : {
+            'url' : url,
+            'content_type' : response.headers['content-type'],
+            'http_code' : response.status_code
+            }
+    }
+    js = json.dumps(data)
+
+    response = flask.Response(js,                   
+                              status = 200,
+                              content_type = 'application/json')
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
-
 
 if __name__ == '__main__':
     app.debug = True
